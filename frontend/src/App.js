@@ -8,7 +8,12 @@ import Navbar from './components/layout/Navbar';
 import Dashboard from './components/pages/Dashboard';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
+import ForgotPassword from './components/auth/ForgotPassword';
+import ResetPassword from './components/auth/ResetPassword';
 import RecommendationHistory from './components/pages/RecommendationHistory';
+import RecommendationsPage from './components/pages/RecommendationsPage';
+import RecommendationDetailPage from './components/pages/RecommendationDetailPage';
+import HistoryDetailPage from './components/pages/HistoryDetailPage';
 import TermsOfService from './components/pages/TermsOfService';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
@@ -43,6 +48,8 @@ function App() {
               {/* Public Routes */}
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password/:token" element={<ResetPassword />} />
               <Route path="/terms-of-service" element={<TermsOfService />} />
               
               {/* Protected Routes */}
@@ -59,6 +66,30 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <RecommendationHistory />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/recommendations"
+                element={
+                  <ProtectedRoute>
+                    <RecommendationsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/recommendation/:id"
+                element={
+                  <ProtectedRoute>
+                    <RecommendationDetailPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/history/:id"
+                element={
+                  <ProtectedRoute>
+                    <HistoryDetailPage />
                   </ProtectedRoute>
                 }
               />

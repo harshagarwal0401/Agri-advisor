@@ -94,6 +94,9 @@ const Register = () => {
     
     setLoading(true);
     try {
+      // Add delay for loading spinner effect
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
       const result = await register(formData);
       
       if (result.success) {

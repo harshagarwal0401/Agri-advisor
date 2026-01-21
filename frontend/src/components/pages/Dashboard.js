@@ -1,20 +1,19 @@
 import React, { useState } from 'react';
 import { useQuery } from 'react-query';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../utils/api';
-import RecommendationResults from '../recommendations/RecommendationResults';
-import EnvironmentalSnapshot from '../recommendations/EnvironmentalSnapshot';
 import './Dashboard.css';
 
 const Dashboard = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     state: '',
     district: '',
     season: 'Kharif'
   });
-  const [recommendations, setRecommendations] = useState(null);
   const [loading, setLoading] = useState(false);
 
   // Fetch states
@@ -76,21 +75,27 @@ const Dashboard = () => {
     }
 
     setLoading(true);
-    setRecommendations(null);
 
     try {
+      // Add delay for loading spinner effect
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
       const res = await api.post('/recommendations/generate', formData);
       // Backend returns { success, data: { recommendations } }
-      setRecommendations(res.data.data);
       toast.success('Recommendations generated successfully!');
       
-      // Smooth scroll to results
-      setTimeout(() => {
-        const resultsElement = document.querySelector('.recommendation-results');
-        if (resultsElement) {
-          resultsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Navigate to recommendations page with data
+      navigate('/recommendations', {
+        state: {
+          recommendations: res.data.data,
+          environmentalSnapshot: res.data.data.environmentalSnapshot,
+          locationInfo: {
+            state: formData.state,
+            district: formData.district,
+            season: formData.season
+          }
         }
-      }, 100);
+      });
     } catch (err) {
       const errorMessage = err.response?.data?.message || 'Failed to get recommendations. Please try again.';
       toast.error(errorMessage);
@@ -230,13 +235,6 @@ const Dashboard = () => {
             </button>
           </form>
         </div>
-
-        {recommendations && (
-          <>
-            <RecommendationResults recommendations={recommendations.recommendations} />
-            <EnvironmentalSnapshot snapshot={recommendations.environmentalSnapshot} />
-          </>
-        )}
       </div>
     </div>
   );
