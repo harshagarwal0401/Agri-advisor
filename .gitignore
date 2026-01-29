@@ -8,3 +8,5 @@ __pycache__/
 venv/
 env/
 ENV/
+ml-service/app/models/trained/*.pkl
+ml-service/app/models/trained/*.npy
