@@ -8,5 +8,14 @@ __pycache__/
 venv/
 env/
 ENV/
+# Trained ML models (too large for GitHub)
 ml-service/app/models/trained/*.pkl
 ml-service/app/models/trained/*.npy
+
+# Optional: other large ML artifacts
+ml-service/app/data/*.npy
+ml-service/app/data/*.pkl
+
+# Python cache
+__pycache__/
+*.pyc
