@@ -7,7 +7,7 @@ import './Auth.css';
 
 const Login = () => {
   const { t } = useTranslation();
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
   
   const [formData, setFormData] = useState({
@@ -21,6 +21,13 @@ const Login = () => {
   useEffect(() => {
     setIsVisible(true);
   }, []);
+
+  // Redirect if user is already logged in
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   const validateForm = () => {
     if (!formData.email) {
@@ -68,7 +75,7 @@ const Login = () => {
       if (result.success) {
         // Dismiss redirecting toast and navigate
         toast.dismiss(toastId);
-        navigate('/');
+        navigate('/dashboard');
         // Show success toast after landing on dashboard
         setTimeout(() => {
           toast.success('Login successful!');

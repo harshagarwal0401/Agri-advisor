@@ -12,7 +12,7 @@ const recommendationSchema = new mongoose.Schema({
   },
   season: {
     type: String,
-    enum: ['Kharif', 'Rabi', 'Zaid'],
+    enum: ['Kharif', 'Rabi', 'Summer', 'Winter', 'Autumn', 'Whole Year'],
     required: true
   },
   selectedCrop: {

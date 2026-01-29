@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/AuthContext';
@@ -11,6 +11,23 @@ const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeLang, setActiveLang] = useState(localStorage.getItem('language') || 'en');
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
+  const [toolsDropdownOpen, setToolsDropdownOpen] = useState(false);
+  const toolsRef = useRef(null);
+  const langRef = useRef(null);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (toolsRef.current && !toolsRef.current.contains(event.target)) {
+        setToolsDropdownOpen(false);
+      }
+      if (langRef.current && !langRef.current.contains(event.target)) {
+        setLangDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const languages = [
     { code: 'en', label: 'English', icon: '🇬🇧' },
@@ -38,13 +55,14 @@ const Navbar = () => {
 
   const closeMobileMenu = () => {
     setMobileMenuOpen(false);
+    setToolsDropdownOpen(false);
   };
 
   return (
     <nav className="navbar">
       <div className="navbar-container">
         {/* Logo */}
-        <Link to="/" className="navbar-brand" onClick={closeMobileMenu}>
+        <Link to={isAuthenticated ? "/dashboard" : "/"} className="navbar-brand" onClick={closeMobileMenu}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="brand-icon">
             <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
             <path d="M2 17l10 5 10-5"></path>
@@ -71,7 +89,7 @@ const Navbar = () => {
             {isAuthenticated && (
               <>
                 <Link 
-                  to="/" 
+                  to="/dashboard" 
                   className="navbar-link"
                   onClick={closeMobileMenu}
                 >
@@ -92,12 +110,86 @@ const Navbar = () => {
                   </svg>
                   <span>{t('history')}</span>
                 </Link>
+                <Link 
+                  to="/analytics" 
+                  className="navbar-link"
+                  onClick={closeMobileMenu}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 20V10M18 20V4M6 20v-4" />
+                  </svg>
+                  <span>Analytics</span>
+                </Link>
+
+                {/* Tools Dropdown */}
+                <div className="nav-dropdown" ref={toolsRef}>
+                  <button 
+                    className="navbar-link dropdown-toggle"
+                    onClick={() => setToolsDropdownOpen(!toolsDropdownOpen)}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="3" width="7" height="7"></rect>
+                      <rect x="14" y="3" width="7" height="7"></rect>
+                      <rect x="14" y="14" width="7" height="7"></rect>
+                      <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>
+                    <span>Tools</span>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`dropdown-chevron ${toolsDropdownOpen ? 'open' : ''}`}>
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </button>
+                  
+                  {toolsDropdownOpen && (
+                    <div className="dropdown-menu tools-menu">
+                      <Link to="/crops" className="dropdown-item" onClick={closeMobileMenu}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                          <path d="M2 17l10 5 10-5"></path>
+                          <path d="M2 12l10 5 10-5"></path>
+                        </svg>
+                        <span>Crop Library</span>
+                      </Link>
+                      <Link to="/weather" className="dropdown-item" onClick={closeMobileMenu}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2"></path>
+                          <circle cx="12" cy="12" r="5"></circle>
+                        </svg>
+                        <span>Weather</span>
+                      </Link>
+                      <Link to="/soil-analysis" className="dropdown-item" onClick={closeMobileMenu}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M2 22h20M12 6V2M6 14v4M12 14v6M18 14v2"></path>
+                          <circle cx="12" cy="9" r="3"></circle>
+                        </svg>
+                        <span>Soil Analysis</span>
+                      </Link>
+                      <Link to="/market-prices" className="dropdown-item" onClick={closeMobileMenu}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                        </svg>
+                        <span>Market Prices</span>
+                      </Link>
+                    </div>
+                  )}
+                </div>
+
+                <Link 
+                  to="/about" 
+                  className="navbar-link"
+                  onClick={closeMobileMenu}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M12 16v-4M12 8h.01"></path>
+                  </svg>
+                  <span>About</span>
+                </Link>
               </>
             )}
           </div>
 
           {/* Language Selector Dropdown */}
-          <div className="language-dropdown">
+          <div className="language-dropdown" ref={langRef}>
             <button
               className="lang-toggle"
               onClick={() => setLangDropdownOpen(!langDropdownOpen)}
@@ -138,12 +230,9 @@ const Navbar = () => {
           <div className="navbar-right">
             {isAuthenticated ? (
               <div className="navbar-user">
-                <div className="user-avatar">
-                  {user?.name?.charAt(0)?.toUpperCase()}
-                </div>
-                <div className="user-info">
-                  <span className="user-name">{user?.name}</span>
-                </div>
+                <Link to="/profile" className="user-avatar" onClick={closeMobileMenu} title="Profile">
+                  {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                </Link>
                 <button 
                   onClick={handleLogout} 
                   className="logout-btn"

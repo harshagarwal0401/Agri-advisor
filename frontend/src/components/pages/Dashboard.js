@@ -205,9 +205,12 @@ const Dashboard = () => {
                     required
                     className="form-select"
                   >
-                    <option value="Kharif">{t('kharif')}</option>
-                    <option value="Rabi">{t('rabi')}</option>
-                    <option value="Zaid">{t('zaid')}</option>
+                    <option value="Kharif">Kharif (Monsoon - Jun to Oct)</option>
+                    <option value="Rabi">Rabi (Winter - Oct to Mar)</option>
+                    <option value="Summer">Summer (Mar to Jun)</option>
+                    <option value="Winter">Winter (Nov to Feb)</option>
+                    <option value="Autumn">Autumn (Sep to Nov)</option>
+                    <option value="Whole Year">Whole Year</option>
                   </select>
                 </div>
               </div>

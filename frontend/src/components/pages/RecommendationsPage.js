@@ -22,7 +22,7 @@ const RecommendationsPage = () => {
             </div>
             <h2>No Recommendations Found</h2>
             <p>Please generate recommendations from the dashboard first</p>
-            <Link to="/" className="btn-primary">
+            <Link to="/dashboard" className="btn-primary">
               Go to Dashboard
             </Link>
           </div>
@@ -39,7 +39,7 @@ const RecommendationsPage = () => {
       <div className="recommendations-container">
         {/* Header Section */}
         <div className="page-header">
-          <button onClick={() => navigate('/')} className="back-button">
+          <button onClick={() => navigate('/dashboard')} className="back-button">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M19 12H5M12 19l-7-7 7-7"></path>
             </svg>

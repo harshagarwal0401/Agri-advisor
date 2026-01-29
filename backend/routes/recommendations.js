@@ -22,6 +22,7 @@ router.use(protect);
 // -------------------------------
 router.post('/', getRecommendations);
 router.get('/', getRecommendationHistory);
+router.get('/history', getRecommendationHistory);  // Alias for Analytics page
 router.get('/:id', getRecommendation);
 router.put('/:id/select-crop', selectCrop);
 router.delete('/:id/select-crop', removeSelectedCrop);

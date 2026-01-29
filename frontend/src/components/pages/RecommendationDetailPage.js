@@ -22,7 +22,7 @@ const RecommendationDetailPage = () => {
             </div>
             <h2>Recommendation Not Found</h2>
             <p>The recommendation you're looking for doesn't exist</p>
-            <Link to="/" className="btn-primary">
+            <Link to="/dashboard" className="btn-primary">
               Go to Dashboard
             </Link>
           </div>
@@ -305,7 +305,7 @@ const RecommendationDetailPage = () => {
 
           {/* Action Buttons */}
           <div className="action-buttons">
-            <button onClick={() => navigate('/')} className="btn-secondary">
+            <button onClick={() => navigate('/dashboard')} className="btn-secondary">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12 2a10 10 0 1 0 10 10H12V2Z"></path>
                 <path d="M12 2v10h10"></path>

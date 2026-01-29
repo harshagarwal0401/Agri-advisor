@@ -27,6 +27,64 @@ const HistoryDetailPage = () => {
     }
   );
 
+  // Mutation for selecting a crop - MUST be before any conditional returns
+  const selectCropMutation = useMutation(
+    async (cropName) => {
+      const res = await api.put(`/recommendations/${id}/select-crop`, { cropName });
+      return res.data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['recommendation', id]);
+        queryClient.invalidateQueries('recommendationHistory');
+        toast.success('Crop selected successfully!');
+        setSelectingCrop(null);
+      },
+      onError: (error) => {
+        toast.error(error.response?.data?.message || 'Failed to select crop');
+        setSelectingCrop(null);
+      }
+    }
+  );
+
+  // Mutation for removing selection - MUST be before any conditional returns
+  const removeSelectionMutation = useMutation(
+    async () => {
+      const res = await api.delete(`/recommendations/${id}/select-crop`);
+      return res.data;
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['recommendation', id]);
+        queryClient.invalidateQueries('recommendationHistory');
+        toast.success('Selection removed');
+      },
+      onError: (error) => {
+        toast.error(error.response?.data?.message || 'Failed to remove selection');
+      }
+    }
+  );
+
+  // Helper functions
+  const handleSelectCrop = (e, cropName) => {
+    e.stopPropagation();
+    setSelectingCrop(cropName);
+    selectCropMutation.mutate(cropName);
+  };
+
+  const handleRemoveSelection = (e) => {
+    e.stopPropagation();
+    removeSelectionMutation.mutate();
+  };
+
+  const getSuitabilityClass = (score) => {
+    if (score >= 80) return 'excellent';
+    if (score >= 60) return 'good';
+    if (score >= 40) return 'moderate';
+    return 'low';
+  };
+
+  // Loading state
   if (isLoading) {
     return (
       <div className="history-detail-page">
@@ -43,6 +101,7 @@ const HistoryDetailPage = () => {
     );
   }
 
+  // Error state
   if (error || !data?.recommendation) {
     return (
       <div className="history-detail-page">
@@ -66,64 +125,14 @@ const HistoryDetailPage = () => {
     );
   }
 
+  // Extract data
   const { recommendation } = data;
-  const { location, season, recommendations: crops, environmentalSnapshot, createdAt, selectedCrop } = recommendation;
-
-  // Mutation for selecting a crop
-  const selectCropMutation = useMutation(
-    async (cropName) => {
-      const res = await api.put(`/recommendations/${id}/select-crop`, { cropName });
-      return res.data;
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['recommendation', id]);
-        queryClient.invalidateQueries('recommendationHistory');
-        toast.success('Crop selected successfully!');
-        setSelectingCrop(null);
-      },
-      onError: (error) => {
-        toast.error(error.response?.data?.message || 'Failed to select crop');
-        setSelectingCrop(null);
-      }
-    }
-  );
-
-  // Mutation for removing selection
-  const removeSelectionMutation = useMutation(
-    async () => {
-      const res = await api.delete(`/recommendations/${id}/select-crop`);
-      return res.data;
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['recommendation', id]);
-        queryClient.invalidateQueries('recommendationHistory');
-        toast.success('Selection removed');
-      },
-      onError: (error) => {
-        toast.error(error.response?.data?.message || 'Failed to remove selection');
-      }
-    }
-  );
-
-  const handleSelectCrop = (e, cropName) => {
-    e.stopPropagation();
-    setSelectingCrop(cropName);
-    selectCropMutation.mutate(cropName);
-  };
-
-  const handleRemoveSelection = (e) => {
-    e.stopPropagation();
-    removeSelectionMutation.mutate();
-  };
-
-  const getSuitabilityClass = (score) => {
-    if (score >= 80) return 'excellent';
-    if (score >= 60) return 'good';
-    if (score >= 40) return 'moderate';
-    return 'low';
-  };
+  const location = recommendation?.location || {};
+  const season = recommendation?.season || 'Unknown';
+  const crops = recommendation?.recommendations || [];
+  const environmentalSnapshot = recommendation?.environmentalSnapshot || {};
+  const createdAt = recommendation?.createdAt;
+  const selectedCrop = recommendation?.selectedCrop;
 
   return (
     <div className="history-detail-page">
@@ -147,7 +156,7 @@ const HistoryDetailPage = () => {
                 <circle cx="12" cy="10" r="3"></circle>
               </svg>
               <div>
-                <h1>{location.district}, {location.state}</h1>
+                <h1>{location?.district || 'Unknown District'}, {location?.state || 'Unknown State'}</h1>
                 <div className="meta-tags">
                   <span className="season-tag">{season} Season</span>
                   <span className="date-tag">
@@ -157,13 +166,13 @@ const HistoryDetailPage = () => {
                       <line x1="8" y1="2" x2="8" y2="6"></line>
                       <line x1="3" y1="10" x2="21" y2="10"></line>
                     </svg>
-                    {new Date(createdAt).toLocaleDateString('en-US', {
+                    {createdAt ? new Date(createdAt).toLocaleDateString('en-US', {
                       year: 'numeric',
                       month: 'long',
                       day: 'numeric',
                       hour: '2-digit',
                       minute: '2-digit'
-                    })}
+                    }) : 'Unknown Date'}
                   </span>
                 </div>
               </div>
@@ -377,7 +386,7 @@ const HistoryDetailPage = () => {
 
         {/* Actions */}
         <div className="action-buttons">
-          <button onClick={() => navigate('/')} className="btn-primary">
+          <button onClick={() => navigate('/dashboard')} className="btn-primary">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M12 2a10 10 0 1 0 10 10H12V2Z"></path>
               <path d="M12 2v10h10"></path>

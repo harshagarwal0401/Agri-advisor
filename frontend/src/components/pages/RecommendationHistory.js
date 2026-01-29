@@ -133,7 +133,7 @@ const RecommendationHistory = () => {
                           <circle cx="12" cy="10" r="3"></circle>
                         </svg>
                       </div>
-                      <h3>{rec.location.state} - {rec.location.district}</h3>
+                      <h3>{rec.location?.state || 'Unknown'} - {rec.location?.district || 'Unknown'}</h3>
                     </div>
                     <div className="meta-info">
                       <span className="season-badge">{rec.season}</span>
@@ -164,7 +164,7 @@ const RecommendationHistory = () => {
                       </div>
                       <div className="selected-crop-info">
                         <span className="selected-label">Your Choice:</span>
-                        <span className="selected-crop-name">{rec.selectedCrop.cropName}</span>
+                        <span className="selected-crop-name">{rec.selectedCrop?.cropName}</span>
                       </div>
                     </div>
                   )}
@@ -172,7 +172,7 @@ const RecommendationHistory = () => {
                   <div className="history-recommendations">
                     <h4>Top Recommendations:</h4>
                     <div className="recommendations-grid">
-                      {rec.recommendations.slice(0, 3).map((recItem, idx) => (
+                      {(rec.recommendations || []).slice(0, 3).map((recItem, idx) => (
                         <div key={idx} className="history-rec-item">
                           <div className="rec-rank">#{idx + 1}</div>
                           <div className="rec-details">
@@ -190,9 +190,9 @@ const RecommendationHistory = () => {
                     </div>
                   </div>
 
-                  {rec.recommendations.length > 3 && (
+                  {(rec.recommendations?.length || 0) > 3 && (
                     <div className="more-crops">
-                      <span>+{rec.recommendations.length - 3} more crops</span>
+                      <span>+{(rec.recommendations?.length || 0) - 3} more crops</span>
                     </div>
                   )}
 

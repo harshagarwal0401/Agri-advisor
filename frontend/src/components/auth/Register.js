@@ -31,7 +31,7 @@ const Register = () => {
   // Redirect if user is already logged in
   useEffect(() => {
     if (user) {
-      navigate('/');
+      navigate('/dashboard');
     }
   }, [user, navigate]);
 
@@ -101,7 +101,7 @@ const Register = () => {
       
       if (result.success) {
         toast.success('Registration successful! Welcome aboard!');
-        setTimeout(() => navigate('/'), 1000);
+        setTimeout(() => navigate('/dashboard'), 1000);
       } else {
         toast.error(result.message || 'Registration failed. Please try again.');
       }
