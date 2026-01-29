@@ -15,6 +15,7 @@ backend/.env
 data-scripts/.env
 frontend/.env.local
 ml-service/.env
+ml-service/app/models/trained/env_profiles_v2.json
 
 # Trained ML models (too large for GitHub)
 ml-service/app/models/trained/*.pkl
