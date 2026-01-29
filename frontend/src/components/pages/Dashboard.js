@@ -110,7 +110,7 @@ const Dashboard = () => {
         <div className="dashboard-header">
           <h1 className="dashboard-title">{t('welcome')}</h1>
           <p className="dashboard-subtitle">
-            Get AI-powered crop recommendations based on your location and season
+            {t('dashboardSubtitle')}
           </p>
         </div>
         
@@ -142,7 +142,7 @@ const Dashboard = () => {
                     required
                     className="form-select"
                   >
-                    <option value="">Select State</option>
+                    <option value="">{t('selectState')}</option>
                     {statesData?.map((state) => (
                       <option key={state} value={state}>
                         {state}
@@ -170,10 +170,10 @@ const Dashboard = () => {
                   >
                     <option value="">
                       {districtsLoading 
-                        ? 'Loading districts...' 
+                        ? t('loadingDistricts') 
                         : districtsError 
-                        ? 'Error loading districts' 
-                        : 'Select District'}
+                        ? t('errorLoadingDistricts') 
+                        : t('selectDistrict')}
                     </option>
                     {districtsData && districtsData.length > 0 ? (
                       districtsData.map((district) => (
@@ -183,7 +183,7 @@ const Dashboard = () => {
                       ))
                     ) : districtsData && districtsData.length === 0 && !districtsLoading ? (
                       <option value="" disabled>
-                        No districts available
+                        {t('noDistrictsAvailable')}
                       </option>
                     ) : null}
                   </select>
@@ -224,7 +224,7 @@ const Dashboard = () => {
               {loading ? (
                 <>
                   <span className="spinner"></span>
-                  <span>Getting Recommendations...</span>
+                  <span>{t('gettingRecommendations')}</span>
                 </>
               ) : (
                 <>

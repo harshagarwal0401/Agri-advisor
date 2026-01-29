@@ -8,6 +8,13 @@ __pycache__/
 venv/
 env/
 ENV/
+
+
+backend/.env
+data-scripts/.env
+frontend/.env.local
+ml-service/.env
+
 # Trained ML models (too large for GitHub)
 ml-service/app/models/trained/*.pkl
 ml-service/app/models/trained/*.npy

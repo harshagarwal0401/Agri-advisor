@@ -118,7 +118,7 @@ const Navbar = () => {
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M12 20V10M18 20V4M6 20v-4" />
                   </svg>
-                  <span>Analytics</span>
+                  <span>{t('analytics')}</span>
                 </Link>
 
                 {/* Tools Dropdown */}
@@ -133,7 +133,7 @@ const Navbar = () => {
                       <rect x="14" y="14" width="7" height="7"></rect>
                       <rect x="3" y="14" width="7" height="7"></rect>
                     </svg>
-                    <span>Tools</span>
+                    <span>{t('tools')}</span>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`dropdown-chevron ${toolsDropdownOpen ? 'open' : ''}`}>
                       <polyline points="6 9 12 15 18 9"></polyline>
                     </svg>
@@ -147,27 +147,27 @@ const Navbar = () => {
                           <path d="M2 17l10 5 10-5"></path>
                           <path d="M2 12l10 5 10-5"></path>
                         </svg>
-                        <span>Crop Library</span>
+                        <span>{t('cropLibrary')}</span>
                       </Link>
                       <Link to="/weather" className="dropdown-item" onClick={closeMobileMenu}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2"></path>
                           <circle cx="12" cy="12" r="5"></circle>
                         </svg>
-                        <span>Weather</span>
+                        <span>{t('weather')}</span>
                       </Link>
                       <Link to="/soil-analysis" className="dropdown-item" onClick={closeMobileMenu}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M2 22h20M12 6V2M6 14v4M12 14v6M18 14v2"></path>
                           <circle cx="12" cy="9" r="3"></circle>
                         </svg>
-                        <span>Soil Analysis</span>
+                        <span>{t('soilAnalysis')}</span>
                       </Link>
                       <Link to="/market-prices" className="dropdown-item" onClick={closeMobileMenu}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                         </svg>
-                        <span>Market Prices</span>
+                        <span>{t('marketPrices')}</span>
                       </Link>
                     </div>
                   )}
@@ -182,7 +182,7 @@ const Navbar = () => {
                     <circle cx="12" cy="12" r="10"></circle>
                     <path d="M12 16v-4M12 8h.01"></path>
                   </svg>
-                  <span>About</span>
+                  <span>{t('about')}</span>
                 </Link>
               </>
             )}
