@@ -1,26 +1,29 @@
 import React, { useState } from 'react';
 import { useQuery } from 'react-query';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import api from '../../utils/api';
-import RecommendationResults from '../recommendations/RecommendationResults';
-import EnvironmentalSnapshot from '../recommendations/EnvironmentalSnapshot';
 import './Dashboard.css';
 
 const Dashboard = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     state: '',
     district: '',
     season: 'Kharif'
   });
-  const [recommendations, setRecommendations] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
 
   // Fetch states
   const { data: statesData } = useQuery('states', async () => {
     const res = await api.get('/locations/states');
     return res.data.states;
+  }, {
+    onError: (error) => {
+      toast.error('Failed to load states. Please refresh the page.');
+    }
   });
 
   // Fetch districts when state is selected
@@ -37,7 +40,10 @@ const Dashboard = () => {
     { 
       enabled: !!formData.state,
       retry: 1,
-      staleTime: 5 * 60 * 1000 // Cache for 5 minutes
+      staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+      onError: (error) => {
+        toast.error(error.response?.data?.message || 'Failed to load districts');
+      }
     }
   );
 
@@ -51,16 +57,48 @@ const Dashboard = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validation
+    if (!formData.state) {
+      toast.error('Please select a state');
+      return;
+    }
+    
+    if (!formData.district) {
+      toast.error('Please select a district');
+      return;
+    }
+    
+    if (!formData.season) {
+      toast.error('Please select a season');
+      return;
+    }
+
     setLoading(true);
-    setError(null);
-    setRecommendations(null);
 
     try {
+      // Add delay for loading spinner effect
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
       const res = await api.post('/recommendations/generate', formData);
       // Backend returns { success, data: { recommendations } }
-      setRecommendations(res.data.data);
+      toast.success('Recommendations generated successfully!');
+      
+      // Navigate to recommendations page with data
+      navigate('/recommendations', {
+        state: {
+          recommendations: res.data.data,
+          environmentalSnapshot: res.data.data.environmentalSnapshot,
+          locationInfo: {
+            state: formData.state,
+            district: formData.district,
+            season: formData.season
+          }
+        }
+      });
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to get recommendations');
+      const errorMessage = err.response?.data?.message || 'Failed to get recommendations. Please try again.';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -69,107 +107,140 @@ const Dashboard = () => {
   return (
     <div className="dashboard">
       <div className="dashboard-container">
-        <h1 className="dashboard-title">{t('welcome')}</h1>
+        <div className="dashboard-header">
+          <h1 className="dashboard-title">{t('welcome')}</h1>
+          <p className="dashboard-subtitle">
+            {t('dashboardSubtitle')}
+          </p>
+        </div>
         
         <div className="recommendation-form-container">
-          <form onSubmit={handleSubmit} className="recommendation-form">
+          <div className="form-header">
+            <div className="form-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg>
+            </div>
             <h2>{t('selectLocation')}</h2>
-            
+          </div>
+          
+          <form onSubmit={handleSubmit} className="recommendation-form">
             <div className="form-row">
               <div className="form-group">
-                <label>{t('state')}</label>
-                <select
-                  name="state"
-                  value={formData.state}
-                  onChange={handleChange}
-                  required
-                >
-                  <option value="">Select State</option>
-                  {statesData?.map((state) => (
-                    <option key={state} value={state}>
-                      {state}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label>{t('district')}</label>
-                <select
-                  name="district"
-                  value={formData.district}
-                  onChange={handleChange}
-                  required
-                  disabled={!formData.state || districtsLoading}
-                >
-                  <option value="">
-                    {districtsLoading 
-                      ? 'Loading districts...' 
-                      : districtsError 
-                      ? 'Error loading districts' 
-                      : 'Select District'}
-                  </option>
-                  {districtsData && districtsData.length > 0 ? (
-                    districtsData.map((district) => (
-                      <option key={district} value={district}>
-                        {district}
+                <label htmlFor="state">{t('state')} <span className="required">*</span></label>
+                <div className="select-wrapper">
+                  <svg className="select-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                  </svg>
+                  <select
+                    id="state"
+                    name="state"
+                    value={formData.state}
+                    onChange={handleChange}
+                    required
+                    className="form-select"
+                  >
+                    <option value="">{t('selectState')}</option>
+                    {statesData?.map((state) => (
+                      <option key={state} value={state}>
+                        {state}
                       </option>
-                    ))
-                  ) : districtsData && districtsData.length === 0 && !districtsLoading ? (
-                    <option value="" disabled>
-                      No districts available
-                    </option>
-                  ) : null}
-                </select>
-                {districtsError && (
-                  <small style={{ color: 'red', display: 'block', marginTop: '5px' }}>
-                    {districtsError.response?.data?.message || districtsError.message || 'Failed to load districts'}
-                  </small>
-                )}
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="form-group">
-                <label>{t('season')}</label>
-                <select
-                  name="season"
-                  value={formData.season}
-                  onChange={handleChange}
-                  required
-                >
-                  <option value="Kharif">{t('kharif')}</option>
-                  <option value="Rabi">{t('rabi')}</option>
-                  <option value="Zaid">{t('zaid')}</option>
-                </select>
+                <label htmlFor="district">{t('district')} <span className="required">*</span></label>
+                <div className="select-wrapper">
+                  <svg className="select-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="M21 21l-4.35-4.35"></path>
+                  </svg>
+                  <select
+                    id="district"
+                    name="district"
+                    value={formData.district}
+                    onChange={handleChange}
+                    required
+                    disabled={!formData.state || districtsLoading}
+                    className="form-select"
+                  >
+                    <option value="">
+                      {districtsLoading 
+                        ? t('loadingDistricts') 
+                        : districtsError 
+                        ? t('errorLoadingDistricts') 
+                        : t('selectDistrict')}
+                    </option>
+                    {districtsData && districtsData.length > 0 ? (
+                      districtsData.map((district) => (
+                        <option key={district} value={district}>
+                          {district}
+                        </option>
+                      ))
+                    ) : districtsData && districtsData.length === 0 && !districtsLoading ? (
+                      <option value="" disabled>
+                        {t('noDistrictsAvailable')}
+                      </option>
+                    ) : null}
+                  </select>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="season">{t('season')} <span className="required">*</span></label>
+                <div className="select-wrapper">
+                  <svg className="select-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M12 2v10m0 0L8 8m4 4 4-4"></path>
+                  </svg>
+                  <select
+                    id="season"
+                    name="season"
+                    value={formData.season}
+                    onChange={handleChange}
+                    required
+                    className="form-select"
+                  >
+                    <option value="Kharif">Kharif (Monsoon - Jun to Oct)</option>
+                    <option value="Rabi">Rabi (Winter - Oct to Mar)</option>
+                    <option value="Summer">Summer (Mar to Jun)</option>
+                    <option value="Winter">Winter (Nov to Feb)</option>
+                    <option value="Autumn">Autumn (Sep to Nov)</option>
+                    <option value="Whole Year">Whole Year</option>
+                  </select>
+                </div>
               </div>
             </div>
 
             <button
               type="submit"
-              className="btn-submit"
+              className={`btn-submit ${loading ? 'btn-loading' : ''}`}
               disabled={loading || !formData.state || !formData.district}
             >
-              {loading ? 'Getting Recommendations...' : t('getRecommendations')}
+              {loading ? (
+                <>
+                  <span className="spinner"></span>
+                  <span>{t('gettingRecommendations')}</span>
+                </>
+              ) : (
+                <>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 2a10 10 0 1 0 10 10H12V2Z"></path>
+                    <path d="M12 2v10h10"></path>
+                  </svg>
+                  <span>{t('getRecommendations')}</span>
+                </>
+              )}
             </button>
           </form>
         </div>
-
-        {error && (
-          <div className="error-message">
-            {error}
-          </div>
-        )}
-
-        {recommendations && (
-          <>
-            <RecommendationResults recommendations={recommendations.recommendations} />
-            <EnvironmentalSnapshot snapshot={recommendations.environmentalSnapshot} />
-          </>
-        )}
       </div>
     </div>
   );
 };
 
 export default Dashboard;
-
-
