@@ -2,6 +2,9 @@ const axios = require('axios');
 const Location = require('../models/Location');
 const Crop = require('../models/Crop');
 const Recommendation = require('../models/Recommendation');
+const { calculateCropEconomics } = require('../utils/cropEconomics');
+
+const normalizeLocationPart = (value) => String(value || '').trim();
 
 /**
  * Resolve latitude/longitude for a given state and district.
@@ -97,7 +100,13 @@ const runRecommendationPipeline = async ({ userId, state, district, season, useR
     throw error;
   }
 
-  const location = await Location.findOne({ state, district });
+  const normalizedState = normalizeLocationPart(state);
+  const normalizedDistrict = normalizeLocationPart(district);
+
+  const location = await Location.findOne({
+    state: new RegExp(`^${normalizedState.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'),
+    district: new RegExp(`^${normalizedDistrict.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i')
+  });
 
   if (!location) {
     const error = new Error(
@@ -113,7 +122,7 @@ const runRecommendationPipeline = async ({ userId, state, district, season, useR
   // Weather: either use stored aggregates or real-time from Open-Meteo
   let weatherSnapshot;
   if (useRealtimeWeather) {
-    const { latitude, longitude } = await resolveCoordinates(location, state, district);
+    const { latitude, longitude } = await resolveCoordinates(location, normalizedState, normalizedDistrict);
     weatherSnapshot = await fetchWeatherFromOpenMeteo(latitude, longitude);
   } else {
     const weather = location.weatherData || {};
@@ -125,8 +134,8 @@ const runRecommendationPipeline = async ({ userId, state, district, season, useR
   }
 
   const mlPayload = {
-    state,
-    district,
+    state: normalizedState,
+    district: normalizedDistrict,
     season,
     soil: soilSnapshot,
     weather: weatherSnapshot
@@ -156,6 +165,7 @@ const runRecommendationPipeline = async ({ userId, state, district, season, useR
         cropName: pred.cropName,
         suitabilityScore: Number(pred.suitabilityScore).toFixed(2),
         yieldPrediction: pred.yieldPrediction,
+        economics: calculateCropEconomics(pred.cropName, pred.yieldPrediction),
         explanation: pred.explanation,
         environmentalFactors: pred.environmentalFactors
       };
@@ -169,7 +179,7 @@ const runRecommendationPipeline = async ({ userId, state, district, season, useR
 
   const recommendationDoc = await Recommendation.create({
     user: userId,
-    location: { state, district },
+    location: { state: normalizedState, district: normalizedDistrict },
     season,
     recommendations,
     environmentalSnapshot

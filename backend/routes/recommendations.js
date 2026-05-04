@@ -71,6 +71,10 @@ router.post('/generate', async (req, res) => {
     // Send request to FastAPI ML service
     const response = await axios.post(`${ML_URL}/predict`, mlPayload);
     const mlData = response.data;
+    const environmentalSnapshot = {
+      soil: mlPayload.soil,
+      weather: mlPayload.weather
+    };
 
     // Save recommendation to database
     const savedRecommendation = await Recommendation.create({
@@ -87,17 +91,18 @@ router.post('/generate', async (req, res) => {
         explanation: rec.explanation,
         environmentalFactors: rec.environmentalFactors
       })) || [],
-      environmentalSnapshot: mlData.environmentalSnapshot || {
-        soil: mlPayload.soil,
-        weather: mlPayload.weather
-      }
+      environmentalSnapshot
     });
 
     console.log("✅ Recommendation saved with ID:", savedRecommendation._id);
 
     return res.json({
       success: true,
-      data: mlData,
+      data: {
+        recommendations: mlData.recommendations || [],
+        environmentalSnapshot,
+        recommendationId: savedRecommendation._id
+      },
       savedId: savedRecommendation._id
     });
 

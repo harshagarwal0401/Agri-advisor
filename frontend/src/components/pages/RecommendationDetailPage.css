@@ -6,7 +6,7 @@
 .detail-container {
   max-width: 1000px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: clamp(1rem, 2vw, 2rem);
 }
 
 /* No Data State */
@@ -60,6 +60,8 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .back-button {
@@ -171,6 +173,8 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
 .score-header h2 {
@@ -209,6 +213,7 @@
   display: flex;
   align-items: center;
   gap: 2rem;
+  flex-wrap: wrap;
 }
 
 .score-circle {
@@ -466,6 +471,176 @@
   color: #2c3e50;
 }
 
+/* Economics Card */
+.economics-card {
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border-left: 4px solid #16a085;
+}
+
+.economics-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+}
+
+.section-kicker {
+  display: block;
+  color: #16a085;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 0.35rem;
+}
+
+.economics-header h2 {
+  margin: 0;
+  color: #2c3e50;
+}
+
+.risk-badge {
+  flex-shrink: 0;
+  padding: 0.45rem 0.85rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.risk-badge.low {
+  background: #d4edda;
+  color: #155724;
+}
+
+.risk-badge.moderate {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.risk-badge.high {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.economics-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.economics-stat {
+  padding: 1.25rem;
+  border-radius: 12px;
+  background: #f8f9fa;
+  min-width: 0;
+}
+
+.economics-stat.investment {
+  background: #fff8e1;
+}
+
+.economics-stat.revenue {
+  background: #e8f5e9;
+}
+
+.economics-stat.profit {
+  background: #e0f2f1;
+}
+
+.economics-stat.profit.loss {
+  background: #ffebee;
+}
+
+.economics-label,
+.economics-stat span {
+  display: block;
+  color: #6c757d;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.economics-stat strong {
+  display: block;
+  color: #2c3e50;
+  font-size: 1.45rem;
+  margin: 0.35rem 0;
+}
+
+.economics-details {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.9fr) minmax(280px, 1.1fr);
+  gap: 1.5rem;
+}
+
+.economics-breakdown,
+.economics-assumptions {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.economics-breakdown h3,
+.economics-assumptions h3 {
+  margin: 0 0 1rem 0;
+  color: #2c3e50;
+  font-size: 1rem;
+}
+
+.cost-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.cost-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  color: #555;
+  font-size: 0.9rem;
+}
+
+.cost-item strong {
+  flex-shrink: 0;
+  color: #2c3e50;
+}
+
+.assumption-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.assumption-grid div {
+  background: white;
+  border-radius: 8px;
+  padding: 0.85rem;
+}
+
+.assumption-grid span {
+  display: block;
+  color: #7f8c8d;
+  font-size: 0.78rem;
+  margin-bottom: 0.3rem;
+}
+
+.assumption-grid strong {
+  color: #2c3e50;
+  font-size: 0.95rem;
+}
+
+.economics-note {
+  margin: 0;
+  color: #6c757d;
+  line-height: 1.6;
+  font-size: 0.9rem;
+}
+
 /* Explanation Card */
 .explanation-card {
   background: white;
@@ -654,6 +829,16 @@
   .factor-bar {
     flex: 1;
     min-width: 100px;
+  }
+
+  .economics-header {
+    flex-direction: column;
+  }
+
+  .economics-stats,
+  .economics-details,
+  .assumption-grid {
+    grid-template-columns: 1fr;
   }
 
   .action-buttons {

@@ -39,6 +39,42 @@ const recommendationSchema = new mongoose.Schema({
       max: Number, // kg/hectare
       expected: Number // kg/hectare
     },
+    economics: {
+      investment: {
+        expected: Number,
+        range: {
+          min: Number,
+          max: Number
+        },
+        unit: String,
+        costBreakdown: [{
+          key: String,
+          amount: Number
+        }]
+      },
+      revenue: {
+        expected: Number,
+        range: {
+          min: Number,
+          max: Number
+        },
+        assumedPricePerKg: Number,
+        expectedYieldKgPerHectare: Number,
+        unit: String
+      },
+      profit: {
+        expected: Number,
+        range: {
+          min: Number,
+          max: Number
+        },
+        roiPercent: Number,
+        breakEvenYieldKgPerHectare: Number,
+        unit: String
+      },
+      riskLevel: String,
+      assumptions: [String]
+    },
     explanation: {
       type: String,
       required: true

@@ -10,7 +10,11 @@ const RecommendationsPage = () => {
   const { recommendations, environmentalSnapshot, locationInfo } = location.state || {};
 
   // Redirect to dashboard if no recommendations data
-  if (!recommendations || !recommendations.recommendations) {
+  const cropRecommendations = Array.isArray(recommendations)
+    ? recommendations
+    : recommendations?.recommendations || [];
+
+  if (!cropRecommendations.length) {
     return (
       <div className="recommendations-page">
         <div className="recommendations-container">
@@ -31,7 +35,7 @@ const RecommendationsPage = () => {
     );
   }
 
-  const { recommendations: crops } = recommendations;
+  const crops = cropRecommendations;
   const { soil, weather } = environmentalSnapshot || {};
 
   const formatCropName = (name) => {

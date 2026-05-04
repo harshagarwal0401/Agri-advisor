@@ -12,10 +12,14 @@ import pickle
 import json
 import os
 import csv
+import sys
 import requests
 from typing import List, Dict, Optional
 from functools import lru_cache
 from collections import defaultdict
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
 
 class CropPredictor:
     """
@@ -296,7 +300,7 @@ class CropPredictor:
                 self.district_profiles = {}
                 self.use_ml_model = True
                 self.model_version = 'v3'
-                print("✅ Season-specific v3 models loaded!")
+                print("Season-specific v3 models loaded.")
                 
             elif os.path.exists(classifier_v2_path):
                 print("Loading improved v2 ML models (95%+ accuracy)...")
@@ -321,7 +325,7 @@ class CropPredictor:
                 
                 self.use_ml_model = True
                 self.model_version = 'v2'
-                print("✅ ML models v2 loaded successfully! (95%+ accuracy)")
+                print("ML models v2 loaded successfully.")
                 
             elif os.path.exists(classifier_path):
                 print("Loading trained ML models v1...")
@@ -346,9 +350,9 @@ class CropPredictor:
                 
                 self.use_ml_model = True
                 self.model_version = 'v1'
-                print("✅ ML models v1 loaded successfully!")
+                print("ML models v1 loaded successfully.")
             else:
-                print("⚠️ Trained models not found. Using rule-based fallback.")
+                print("Trained models not found. Using rule-based fallback.")
                 self.use_ml_model = False
                 self.model_version = None
                 self.crop_profiles = {}
@@ -356,7 +360,7 @@ class CropPredictor:
                 self.encoders = {'state_classes': [], 'district_classes': [], 'crop_classes': []}
                 
         except Exception as e:
-            print(f"⚠️ Error loading models: {e}. Using rule-based fallback.")
+            print(f"Error loading models: {e}. Using rule-based fallback.")
             self.use_ml_model = False
             self.model_version = None
             self.crop_profiles = {}
@@ -644,6 +648,25 @@ class CropPredictor:
                 return crops[crop]
         
         return None
+
+    def _get_crop_profile(self, state: str, district: str, season: str, crop: str) -> Dict:
+        """Return district-season profile for a modeled crop category."""
+        key = f"{state}_{district}_{season}".upper()
+        if hasattr(self, 'crop_profiles') and key in self.crop_profiles:
+            return self.crop_profiles[key].get(crop)
+        return None
+
+    def _calculate_historical_strength(self, state: str, district: str, season: str, crop: str) -> float:
+        """Score how strongly this crop is supported by district-season history."""
+        profile = self._get_crop_profile(state, district, season, crop)
+        if not profile:
+            return 0.0
+
+        record_count = max(0, profile.get('record_count', 0))
+        avg_area = max(0, profile.get('avg_area', 0))
+        record_score = min(1.0, record_count / 10)
+        area_score = min(1.0, np.log1p(avg_area) / 10)
+        return (record_score * 0.65) + (area_score * 0.35)
     
     def _calculate_suitability_score_ml(self, crop_idx: int, probabilities: np.ndarray, features: Dict = None) -> float:
         """Calculate suitability score from ML model probabilities and environmental factors."""
@@ -756,6 +779,12 @@ class CropPredictor:
                         profile = self.crop_profiles[key][crop]
                         yield_mean = profile.get('yield_mean', 2000)
                         yield_std = profile.get('yield_std', 500)
+
+                        # Historical production data is usually tonnes/hectare.
+                        # The API contract and UI expect kg/hectare.
+                        if yield_mean < 100:
+                            yield_mean *= 1000
+                            yield_std *= 1000
                         
                         # Adjust for temperature
                         temp_suit = self._calculate_temp_suitability(crop, temperature)
@@ -921,7 +950,7 @@ class CropPredictor:
         
         return " ".join(explanations)
     
-    def _calculate_environmental_factors(self, features: Dict, historical: Dict = None) -> Dict:
+    def _calculate_environmental_factors(self, features: Dict, historical: Dict = None, crop: str = None) -> Dict:
         """
         Calculate individual environmental factor matches.
         """
@@ -948,23 +977,34 @@ class CropPredictor:
         if 80 <= potassium <= 250:
             npk_score += 30
         
-        # Weather match
-        weather_score = 0
+        # Weather match. Use crop-specific temperature ranges where available;
+        # generic 20-35 C scoring made many crops look identical.
         temp = features.get('avg_temperature', 25)
-        if 20 <= temp <= 35:
-            weather_score += 50
-        
+        if crop:
+            temp_score = self._calculate_temp_suitability(crop, temp) * 60
+        else:
+            temp_score = 50 if 20 <= temp <= 35 else 25
+
         humidity = features.get('avg_humidity', 60)
-        if 40 <= humidity <= 80:
-            weather_score += 50
+        if 45 <= humidity <= 80:
+            humidity_score = 40
+        elif 35 <= humidity <= 90:
+            humidity_score = 28
+        else:
+            humidity_score = 15
+
+        weather_score = temp_score + humidity_score
         
         # Historical yield score
         historical_score = 70  # Default
         if historical:
             # Score based on consistency of historical yields
             std = historical.get('std_yield', 0)
-            avg = historical.get('avg_yield', 1)
-            if avg > 0:
+            avg = historical.get('avg_yield', historical.get('yield_mean', 1))
+            if std is None or not np.isfinite(std):
+                record_count = historical.get('record_count', historical.get('num_records', 0))
+                historical_score = max(60, min(100, 55 + record_count * 3))
+            elif avg and np.isfinite(avg) and avg > 0:
                 cv = std / avg  # Coefficient of variation
                 historical_score = max(50, min(100, 100 - cv * 100))
         
@@ -1003,10 +1043,14 @@ class CropPredictor:
             if season in self.season_crop_map:
                 if key in self.season_crop_map[season]:
                     return set(self.season_crop_map[season][key])
-                # Try state-level
-                for k in self.season_crop_map[season]:
+                # Try state-level, but aggregate all districts instead of returning
+                # the first district found for the state.
+                state_crops = set()
+                for k, crops in self.season_crop_map[season].items():
                     if k.startswith(state.upper()):
-                        return set(self.season_crop_map[season][k])
+                        state_crops.update(crops)
+                if state_crops:
+                    return state_crops
         
         # Fall back to default season crops
         return set(self.DEFAULT_SEASON_CROPS.get(season, []))
@@ -1039,7 +1083,7 @@ class CropPredictor:
         
         # Get crops grown in this season
         season_crops = self._get_crops_for_season(state, district, season)
-        print(f"🌱 Season '{season}' crops for {district}: {season_crops}")
+        print(f"Season '{season}' crops for {district}: {season_crops}")
         
         used_specific_crop_names = set()
 
@@ -1068,6 +1112,7 @@ class CropPredictor:
                     
                     # Temperature suitability adjustment
                     temp_suit = self._calculate_temp_suitability(crop_name, temperature)
+                    historical_strength = self._calculate_historical_strength(state, district, season, crop_name)
                     
                     # Strong adjustments based on season match
                     if is_season_match:
@@ -1079,6 +1124,13 @@ class CropPredictor:
                     # Additional temp penalty if very unsuitable
                     if temp_suit < 0.5:
                         score *= 0.8
+
+                    if historical_strength > 0:
+                        score += historical_strength * 18
+                    else:
+                        score -= 12
+
+                    score = min(100, max(0, score))
                     
                     all_scores.append({
                         'idx': idx,
@@ -1106,7 +1158,10 @@ class CropPredictor:
                         continue
                     
                     # Get historical data
-                    historical = self._get_district_historical_data(state, district, crop_name)
+                    historical = (
+                        self._get_district_historical_data(state, district, crop_name)
+                        or self._get_crop_profile(state, district, season, crop_name)
+                    )
 
                     # Convert category prediction into a precise crop for user-facing output.
                     specific_crop_name = self._select_specific_crop(
@@ -1115,7 +1170,7 @@ class CropPredictor:
                         district,
                         season,
                         used_specific_crop_names,
-                        strict_data_mode=True
+                        strict_data_mode=False
                     )
                     if not specific_crop_name:
                         continue
@@ -1130,7 +1185,7 @@ class CropPredictor:
                     )
                     
                     # Calculate environmental factors
-                    env_factors = self._calculate_environmental_factors(features, historical)
+                    env_factors = self._calculate_environmental_factors(features, historical, crop_name)
                     
                     recommendations.append({
                         'cropName': specific_crop_name,
@@ -1214,9 +1269,15 @@ class CropPredictor:
         used_specific_crop_names = set()
         for crop_name in season_crops:
             temp_suit = self._calculate_temp_suitability(crop_name, temperature)
+            historical_strength = self._calculate_historical_strength(
+                features.get('state', ''),
+                features.get('district', ''),
+                season,
+                crop_name
+            )
             
             # Base score from temperature suitability
-            score = 50 + (temp_suit * 40)  # 50-90 range
+            score = min(100, max(0, 45 + (temp_suit * 35) + (historical_strength * 20)))
             
             if score < 30:
                 continue
@@ -1245,7 +1306,7 @@ class CropPredictor:
                 features.get('district', ''),
                 season,
                 used_specific_crop_names,
-                strict_data_mode=True
+                strict_data_mode=False
             )
             if not specific_crop_name:
                 continue
@@ -1258,7 +1319,7 @@ class CropPredictor:
 
             explanation = explanation.replace(crop_name, specific_crop_name)
             
-            env_factors = self._calculate_environmental_factors(features)
+            env_factors = self._calculate_environmental_factors(features, None, crop_name)
             
             recommendations.append({
                 'cropName': specific_crop_name,

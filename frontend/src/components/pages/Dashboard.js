@@ -158,14 +158,15 @@ const Dashboard = () => {
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       const res = await api.post('/recommendations/generate', formData);
-      // Backend returns { success, data: { recommendations } }
+      const recommendationPayload = res.data.data || res.data;
+
       toast.success('Recommendations generated successfully!');
       
       // Navigate to recommendations page with data
       navigate('/recommendations', {
         state: {
-          recommendations: res.data.data,
-          environmentalSnapshot: res.data.data.environmentalSnapshot,
+          recommendations: recommendationPayload,
+          environmentalSnapshot: recommendationPayload.environmentalSnapshot,
           locationInfo: {
             state: formData.state,
             district: formData.district,

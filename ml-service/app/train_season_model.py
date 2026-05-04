@@ -7,6 +7,7 @@ Season-Specific Crop Recommendation Model v3
 import os
 import json
 import pickle
+import sys
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder, StandardScaler
@@ -20,6 +21,9 @@ try:
 except ImportError:
     HAS_XGBOOST = False
     from sklearn.ensemble import GradientBoostingClassifier
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
 
 # Paths
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -288,8 +292,11 @@ def train_model(X, y, encoders):
     print(f"✅ Top-3 Accuracy: {top3_acc*100:.2f}%")
     print(f"✅ Top-5 Accuracy: {top5_acc*100:.2f}%")
     
-    cv_scores = cross_val_score(classifier, X_scaled, y, cv=5)
-    print(f"✅ Cross-validation: {cv_scores.mean()*100:.2f}% (+/- {cv_scores.std()*100:.2f}%)")
+    if os.getenv('RUN_SEASON_CV', '0') == '1':
+        cv_scores = cross_val_score(classifier, X_scaled, y, cv=5)
+        print(f"✅ Cross-validation: {cv_scores.mean()*100:.2f}% (+/- {cv_scores.std()*100:.2f}%)")
+    else:
+        print("Cross-validation skipped (set RUN_SEASON_CV=1 to enable).")
     
     return classifier, scaler, accuracy
 

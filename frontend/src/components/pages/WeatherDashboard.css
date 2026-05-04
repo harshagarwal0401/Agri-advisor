@@ -7,6 +7,7 @@
 .weather-header {
   text-align: center;
   margin-bottom: 2rem;
+  padding: clamp(1rem, 2vw, 2rem);
 }
 
 .weather-header h1 {
@@ -27,6 +28,7 @@
   gap: 1.5rem;
   max-width: 800px;
   margin: 0 auto 2rem;
+  flex-wrap: wrap;
 }
 
 .selector-card {

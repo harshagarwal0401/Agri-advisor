@@ -34,6 +34,8 @@ const RecommendationDetailPage = () => {
   const { cropName, suitabilityScore, yieldPrediction, explanation, environmentalFactors } = recommendation;
   const { soil, weather } = environmentalSnapshot || {};
 
+  const economics = recommendation.economics || buildFallbackEconomics(cropName, yieldPrediction);
+
   const getSuitabilityClass = (score) => {
     if (score >= 80) return 'excellent';
     if (score >= 60) return 'good';
@@ -227,6 +229,75 @@ const RecommendationDetailPage = () => {
             </div>
           )}
 
+          {/* Economic Estimate */}
+          {economics && (
+            <div className="economics-card">
+              <div className="economics-header">
+                <div>
+                  <span className="section-kicker">Per hectare estimate</span>
+                  <h2>Investment & Profit Potential</h2>
+                </div>
+                <span className={`risk-badge ${getRiskClass(economics.riskLevel)}`}>
+                  {economics.riskLevel || 'Moderate'} Risk
+                </span>
+              </div>
+
+              <div className="economics-stats">
+                <div className="economics-stat investment">
+                  <span className="economics-label">Investment Needed</span>
+                  <strong>{formatCurrency(economics.investment?.expected)}</strong>
+                  <span>{formatCurrencyRange(economics.investment?.range)}</span>
+                </div>
+                <div className="economics-stat revenue">
+                  <span className="economics-label">Expected Revenue</span>
+                  <strong>{formatCurrency(economics.revenue?.expected)}</strong>
+                  <span>{formatCurrencyRange(economics.revenue?.range)}</span>
+                </div>
+                <div className={`economics-stat profit ${(economics.profit?.expected || 0) < 0 ? 'loss' : ''}`}>
+                  <span className="economics-label">Estimated Profit</span>
+                  <strong>{formatCurrency(economics.profit?.expected)}</strong>
+                  <span>{economics.profit?.roiPercent || 0}% return on investment</span>
+                </div>
+              </div>
+
+              <div className="economics-details">
+                <div className="economics-breakdown">
+                  <h3>Cost Breakdown</h3>
+                  <div className="cost-list">
+                    {(economics.investment?.costBreakdown || []).map((item) => (
+                      <div className="cost-item" key={item.key}>
+                        <span>{formatCostLabel(item.key)}</span>
+                        <strong>{formatCurrency(item.amount)}</strong>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="economics-assumptions">
+                  <h3>Planning Assumptions</h3>
+                  <div className="assumption-grid">
+                    <div>
+                      <span>Sale price used</span>
+                      <strong>Rs. {formatNumber(economics.revenue?.assumedPricePerKg)}/kg</strong>
+                    </div>
+                    <div>
+                      <span>Yield used</span>
+                      <strong>{formatNumber(economics.revenue?.expectedYieldKgPerHectare)} kg/ha</strong>
+                    </div>
+                    <div>
+                      <span>Break-even yield</span>
+                      <strong>{formatNumber(economics.profit?.breakEvenYieldKgPerHectare)} kg/ha</strong>
+                    </div>
+                  </div>
+                  <p className="economics-note">
+                    These are indicative estimates. Local mandi price, input quality, labour cost, irrigation,
+                    transport, and crop quality can change actual profit.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Explanation Section */}
           <div className="explanation-card">
             <div className="explanation-header">
@@ -323,6 +394,104 @@ const RecommendationDetailPage = () => {
       </div>
     </div>
   );
+};
+
+const fallbackEconomicsByCrop = {
+  rice: { investment: 62000, price: 23, risk: 'Moderate' },
+  paddy: { investment: 62000, price: 23, risk: 'Moderate' },
+  wheat: { investment: 52000, price: 24, risk: 'Low to Moderate' },
+  maize: { investment: 48000, price: 21, risk: 'Moderate' },
+  potato: { investment: 145000, price: 14, risk: 'High' },
+  onion: { investment: 120000, price: 16, risk: 'High' },
+  tomato: { investment: 135000, price: 18, risk: 'High' },
+  sugarcane: { investment: 125000, price: 3.7, risk: 'Moderate' },
+  cotton: { investment: 78000, price: 70, risk: 'High' },
+  mustard: { investment: 41000, price: 55, risk: 'Low to Moderate' },
+  soybean: { investment: 45000, price: 48, risk: 'Moderate' },
+  gram: { investment: 39000, price: 65, risk: 'Moderate' },
+  banana: { investment: 175000, price: 12, risk: 'Moderate to High' },
+  chillies: { investment: 110000, price: 70, risk: 'High' },
+  turmeric: { investment: 115000, price: 75, risk: 'Moderate to High' }
+};
+
+const buildFallbackEconomics = (cropName, yieldPrediction = {}) => {
+  const normalized = String(cropName || '').toLowerCase();
+  const key = Object.keys(fallbackEconomicsByCrop).find((item) => normalized.includes(item));
+  const base = fallbackEconomicsByCrop[key] || { investment: 50000, price: 18, risk: 'Moderate' };
+  const rawYield = Number(yieldPrediction?.expected) || 0;
+  const expectedYieldKg = rawYield > 0 && rawYield < 100 ? rawYield * 1000 : rawYield;
+  const revenue = expectedYieldKg * base.price;
+  const profit = revenue - base.investment;
+  const roi = base.investment > 0 ? Math.round((profit / base.investment) * 100) : 0;
+  const costParts = [
+    ['seed', 0.18],
+    ['fertilizer', 0.22],
+    ['labour', 0.28],
+    ['irrigation', 0.1],
+    ['cropProtection', 0.1],
+    ['machinery', 0.07],
+    ['harvestPostHarvest', 0.05]
+  ];
+
+  return {
+    investment: {
+      expected: roundToNearest(base.investment),
+      range: buildRange(base.investment, 0.15),
+      costBreakdown: costParts.map(([part, share]) => ({
+        key: part,
+        amount: roundToNearest(base.investment * share)
+      }))
+    },
+    revenue: {
+      expected: roundToNearest(revenue),
+      range: buildRange(revenue, 0.2),
+      assumedPricePerKg: base.price,
+      expectedYieldKgPerHectare: Math.round(expectedYieldKg)
+    },
+    profit: {
+      expected: roundToNearest(profit),
+      range: buildRange(profit, 0.25),
+      roiPercent: roi,
+      breakEvenYieldKgPerHectare: Math.round(base.investment / base.price)
+    },
+    riskLevel: base.risk
+  };
+};
+
+const roundToNearest = (value, nearest = 100) => Math.round((Number(value) || 0) / nearest) * nearest;
+
+const buildRange = (value, spread) => ({
+  min: roundToNearest((Number(value) || 0) * (1 - spread)),
+  max: roundToNearest((Number(value) || 0) * (1 + spread))
+});
+
+const formatNumber = (value) => Number(value || 0).toLocaleString('en-IN');
+
+const formatCurrency = (value) => `Rs. ${formatNumber(value)}`;
+
+const formatCurrencyRange = (range) => {
+  if (!range) return 'Range not available';
+  return `${formatCurrency(range.min)} - ${formatCurrency(range.max)}`;
+};
+
+const formatCostLabel = (key) => {
+  const labels = {
+    seed: 'Seed / planting material',
+    fertilizer: 'Fertilizer & manure',
+    labour: 'Labour',
+    irrigation: 'Irrigation',
+    cropProtection: 'Crop protection',
+    machinery: 'Machinery',
+    harvestPostHarvest: 'Harvest & transport'
+  };
+  return labels[key] || key;
+};
+
+const getRiskClass = (risk = '') => {
+  const value = risk.toLowerCase();
+  if (value.includes('high')) return 'high';
+  if (value.includes('low')) return 'low';
+  return 'moderate';
 };
 
 export default RecommendationDetailPage;

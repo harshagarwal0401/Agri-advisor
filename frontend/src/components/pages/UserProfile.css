@@ -1,7 +1,7 @@
 .user-profile-container {
   min-height: calc(100vh - 70px);
   background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
-  padding: 2rem;
+  padding: clamp(1rem, 2vw, 2rem);
 }
 
 .profile-header {
@@ -27,6 +27,7 @@
   justify-content: center;
   gap: 1rem;
   margin-bottom: 2rem;
+  flex-wrap: wrap;
 }
 
 .tab-btn {
@@ -78,6 +79,7 @@
   padding-bottom: 2rem;
   border-bottom: 1px solid #eee;
   margin-bottom: 2rem;
+  flex-wrap: wrap;
 }
 
 .avatar-section {

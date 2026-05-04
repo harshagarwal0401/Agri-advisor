@@ -2,11 +2,12 @@ const axios = require('axios');
 
 // data.gov.in Agmarknet resource – Daily APMC mandi prices across India
 const DATA_GOV_BASE = 'https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070';
-const DEFAULT_DATA_GOV_API_KEY = '579b464db66ec23bdd000001cdd3946e44ce4aad7209ff7b23ac571b';
+const PUBLIC_DEMO_DATA_GOV_API_KEY = '579b464db66ec23bdd000001cdd3946e44ce4aad7209ff7b23ac571b';
 const AVAILABLE_LOCATIONS_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const MARKET_PRICE_CACHE_TTL_MS = 60 * 60 * 1000;
 const availableLocationsCache = new Map();
 const marketPricesCache = new Map();
+const DISTRICT_PROBE_LIMIT = 1000;
 const STATE_PROBE_BATCH_SIZE = 8;
 const VERIFIED_FALLBACK_STATES_BY_CROP = {
   rice: [
@@ -55,7 +56,8 @@ const CROP_VARIANTS = {
 const sanitizeCrop = (crop = '') =>
   String(crop).trim().replace(/[^a-zA-Z\s-]/g, '').replace(/\s+/g, ' ');
 
-const getDataGovApiKey = () => process.env.DATA_GOV_API_KEY || DEFAULT_DATA_GOV_API_KEY;
+const getDataGovApiKey = () => String(process.env.DATA_GOV_API_KEY || '').trim();
+const isUsingPublicDemoKey = (apiKey) => apiKey === PUBLIC_DEMO_DATA_GOV_API_KEY;
 
 // Convert DD/MM/YYYY → YYYY-MM-DD
 const toIso = (dateStr = '') => {
@@ -131,6 +133,26 @@ const fetchStateRecords = async (apiKey, cropVariants, state, options = {}) => {
   return [];
 };
 
+const fetchDistrictRecords = async (apiKey, cropVariants, state, district, options = {}) => {
+  if (!district) {
+    return [];
+  }
+
+  for (const variant of cropVariants) {
+    try {
+      const records = await fetchRecords(apiKey, variant, state, district, options);
+      const validRecords = records.filter((record) => Number(record.modal_price || 0) > 0);
+      if (validRecords.length) {
+        return validRecords;
+      }
+    } catch (_) {
+      // Continue with the next crop naming variant.
+    }
+  }
+
+  return [];
+};
+
 const fetchStateRecordsWithRetry = async (apiKey, cropVariants, state, attempts = 3) => {
   let lastError = null;
 
@@ -189,6 +211,7 @@ exports.getMarketPrices = async (req, res) => {
   try {
     const cropInput = sanitizeCrop(req.query.crop);
     const state     = String(req.query.state     || req.user?.state     || '').trim();
+    const district  = String(req.query.district  || req.user?.district  || '').trim();
     const timeRange = String(req.query.timeRange || '1month').trim();
     const days      = DAY_RANGE_BY_TIME[timeRange] || 30;
     const apiKey    = getDataGovApiKey();
@@ -208,12 +231,31 @@ exports.getMarketPrices = async (req, res) => {
     }
 
     const cropVariants = getCropVariantsFromInput(cropInput);
-    const cacheKey = `${cropInput.toLowerCase()}::${state.toLowerCase()}::${timeRange}`;
+    const cacheKey = `${cropInput.toLowerCase()}::${state.toLowerCase()}::${district.toLowerCase()}::${timeRange}`;
     const cached = marketPricesCache.get(cacheKey);
 
     let records = [];
+    let coverage = 'state';
+    let coverageMessage = `Showing mandis from ${state}.`;
     try {
-      records = await fetchStateRecordsWithRetry(apiKey, cropVariants, state, 3);
+      if (district) {
+        records = await fetchDistrictRecords(apiKey, cropVariants, state, district, {
+          limit: DISTRICT_PROBE_LIMIT,
+          timeout: 15000
+        });
+        if (records.length) {
+          coverage = 'district';
+          coverageMessage = `Showing mandis reported in ${district}, ${state}.`;
+        }
+      }
+
+      if (!records.length) {
+        records = await fetchStateRecordsWithRetry(apiKey, cropVariants, state, 3);
+        coverage = district ? 'state_fallback' : 'state';
+        coverageMessage = district
+          ? `No recent ${cropInput} prices were found in ${district}. Showing active mandis across ${state}.`
+          : `Showing mandis from ${state}.`;
+      }
     } catch (error) {
       if (cached && (Date.now() - cached.timestamp) < MARKET_PRICE_CACHE_TTL_MS) {
         return res.json({
@@ -240,7 +282,9 @@ exports.getMarketPrices = async (req, res) => {
 
       return res.status(404).json({
         success: false,
-        message: `No mandi prices found for ${cropInput} in ${state}`
+        message: district
+          ? `No mandi prices found for ${cropInput} in ${district}, ${state}`
+          : `No mandi prices found for ${cropInput} in ${state}`
       });
     }
 
@@ -296,6 +340,9 @@ exports.getMarketPrices = async (req, res) => {
     const responseData = {
       crop:          cropInput,
       state,
+      district,
+      coverage,
+      coverageMessage,
       unit:          'quintal',
       lastUpdated:   toIso(latestDate) || new Date().toISOString(),
       mandis,
@@ -317,6 +364,13 @@ exports.getMarketPrices = async (req, res) => {
     });
   } catch (error) {
     console.error('Market price fetch error:', error.response?.data || error.message);
+    if (error.response?.data?.error === 'Rate limit exceeded' || error.response?.status === 429) {
+      return res.status(429).json({
+        success: false,
+        message: 'Live mandi price service is rate-limited right now. Please try again shortly or configure a DATA_GOV_API_KEY.'
+      });
+    }
+
     return res.status(500).json({
       success: false,
       message: 'Unable to fetch current mandi prices right now'
@@ -330,6 +384,7 @@ exports.getMarketPrices = async (req, res) => {
 exports.getAvailableMarketLocations = async (req, res) => {
   try {
     const cropInput = sanitizeCrop(req.query.crop);
+    const state = String(req.query.state || '').trim();
     const apiKey = getDataGovApiKey();
 
     if (!apiKey) {
@@ -346,16 +401,43 @@ exports.getAvailableMarketLocations = async (req, res) => {
       });
     }
 
-    const cacheKey = cropInput.toLowerCase();
+    const cacheKey = `${cropInput.toLowerCase()}::${state.toLowerCase() || 'states'}`;
     const cached = availableLocationsCache.get(cacheKey);
     if (cached && (Date.now() - cached.timestamp) < AVAILABLE_LOCATIONS_CACHE_TTL_MS) {
       return res.json({ success: true, data: cached.data });
     }
 
     const cropVariants = getCropVariantsFromInput(cropInput);
+    if (state) {
+      const records = await fetchStateRecordsWithRetry(apiKey, cropVariants, state, 2);
+      const districts = Array.from(
+        new Set(
+          records
+            .map((record) => String(record.district || '').trim())
+            .filter(Boolean)
+        )
+      ).sort((a, b) => a.localeCompare(b));
+
+      const data = {
+        crop: cropInput,
+        state,
+        districts
+      };
+
+      availableLocationsCache.set(cacheKey, {
+        timestamp: Date.now(),
+        data
+      });
+
+      return res.json({
+        success: true,
+        data
+      });
+    }
+
     let states = [];
 
-    if (apiKey === DEFAULT_DATA_GOV_API_KEY) {
+    if (isUsingPublicDemoKey(apiKey)) {
       states = VERIFIED_FALLBACK_STATES_BY_CROP[cacheKey] || [];
     }
 
@@ -379,6 +461,13 @@ exports.getAvailableMarketLocations = async (req, res) => {
     });
   } catch (error) {
     console.error('Available locations fetch error:', error.response?.data || error.message);
+    if (error.response?.data?.error === 'Rate limit exceeded' || error.response?.status === 429) {
+      return res.status(429).json({
+        success: false,
+        message: 'Live mandi location service is rate-limited right now. Showing local location options may still work after retry.'
+      });
+    }
+
     return res.status(500).json({
       success: false,
       message: 'Unable to fetch available mandi locations right now'

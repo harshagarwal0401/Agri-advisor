@@ -59,6 +59,7 @@ function App() {
           <ScrollToTop />
           <div className="App">
             <Navbar />
+            <main className="app-route-shell">
             <Routes>
               {/* Public Routes */}
               <Route path="/" element={<LandingPage />} />
@@ -162,6 +163,7 @@ function App() {
               {/* Catch-all - redirect to home */}
               <Route path="*" element={<Navigate to="/dashboard" />} />
             </Routes>
+            </main>
             <ToastContainer position="top-right" autoClose={3000} />
           </div>
         </Router>
