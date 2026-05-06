@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import './About.css';
 
 const About = () => {
-  const { t } = useTranslation();
   const [activeAccordion, setActiveAccordion] = useState(null);
 
   const features = [

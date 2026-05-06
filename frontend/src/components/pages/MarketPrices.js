@@ -6,9 +6,7 @@ import api from '../../utils/api';
 import './MarketPrices.css';
 
 const crops = [
-  { id: 'rice', name: 'Rice', icon: 'RI', unit: 'quintal' },
   { id: 'wheat', name: 'Wheat', icon: 'WH', unit: 'quintal' },
-  { id: 'cotton', name: 'Cotton', icon: 'CT', unit: 'quintal' },
   { id: 'sugarcane', name: 'Sugarcane', icon: 'SC', unit: 'quintal' },
   { id: 'soybean', name: 'Soybean', icon: 'SB', unit: 'quintal' },
   { id: 'groundnut', name: 'Groundnut', icon: 'GN', unit: 'quintal' },

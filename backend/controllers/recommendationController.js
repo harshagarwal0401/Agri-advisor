@@ -141,10 +141,19 @@ const runRecommendationPipeline = async ({ userId, state, district, season, useR
     weather: weatherSnapshot
   };
 
+  const mlServiceUrl = process.env.ML_SERVICE_URL ||
+    (process.env.ML_SERVICE_HOSTPORT ? `http://${process.env.ML_SERVICE_HOSTPORT}` : null);
+
+  if (!mlServiceUrl) {
+    const err = new Error('ML service is not configured.');
+    err.statusCode = 503;
+    throw err;
+  }
+
   let mlResponse;
   try {
     mlResponse = await axios.post(
-      `${process.env.ML_SERVICE_URL}/predict`,
+      `${mlServiceUrl}/predict`,
       mlPayload,
       { timeout: 10000 }
     );
